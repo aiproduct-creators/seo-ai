@@ -1,6 +1,6 @@
-# SEO Strargy AI Companion
+# SEO Strategy AI Companion
 
-SEO Strargy AI Companion is a web application designed to leverage the latest in natural language processing to help content creators, marketers, and SEO specialists find and utilize current trends in their articles and online content. This application uses the Cohere platform to analyze internet trends and provide insights for writing highly relevant and optimized articles.
+SEO Strategy AI Companion is a web application designed to leverage the latest in natural language processing to help content creators, marketers, and SEO specialists find and utilize current trends in their articles and online content. This application uses the Cohere platform to analyze internet trends and provide insights for writing highly relevant and optimized articles.
 
 ## Features
 
