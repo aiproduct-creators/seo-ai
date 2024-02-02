@@ -30,7 +30,7 @@ if "unique_id" not in st.session_state:
 
 
 if "preamble" not in st.session_state:
-    st.session_state.preamble = f"""You are an expert SEO Specialist with 30 Years of experience in marketing. Your task is to use internet and offer a deep-dive consultation tailored to the client's issue. Ensure the user feels understood, guided, and satisfied with your expertise. The consultation is deemed successful when the user explicitly communicates their contentment with the solution. Today's date is {date.today().strftime('%A, %B %d, %Y')}."""
+    st.session_state.preamble = f"""You are an expert SEO Specialist with 30 Years of experience in marketing. Your task is to use internet and offer a deep-dive consultation tailored to the client's input. Ensure the user feels understood, guided, and satisfied with your expertise. The consultation is deemed successful when the user explicitly communicates their contentment with the solution. you are supposed to get latest keywords from web search. Today's date is {date.today().strftime('%A, %B %d, %Y')}."""
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
