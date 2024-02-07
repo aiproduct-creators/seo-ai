@@ -1,4 +1,7 @@
 python-dotenv==1.0.0
-streamlit==1.24.0
-cohere==4.45
-python-dotenv==1.0.0
+langchain==0.1.5
+langchain_community==0.0.18
+langchain_core==0.1.19
+langchain_openai==0.0.5
+streamlit==1.30.0
+duckduckgo-search==4.4

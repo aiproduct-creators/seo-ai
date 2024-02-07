@@ -2,64 +2,83 @@ from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-import cohere
-from cohere.responses.chat import StreamEvent
+
+from langchain.agents import ConversationalChatAgent, AgentExecutor
+from langchain.memory import ConversationBufferMemory
+from langchain_community.callbacks import StreamlitCallbackHandler
+from langchain_community.chat_message_histories import StreamlitChatMessageHistory
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_core.runnables import RunnableConfig
+from langchain_openai import ChatOpenAI
+
 import streamlit as st
-import uuid
-from datetime import date
 
-co = cohere.Client(getenv("CO_API"))
-# Use CSS to add custom styles to your UI
-with open("style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+st.set_page_config(page_title="SEO AI Companion", page_icon="🚀")
+st.title("🚀 SEO AI Companion")
 
-# Side bar
-if st.sidebar.button("New Chat", key="clear_chat"):
-    st.session_state.messages = []
 st.sidebar.title("SEO AI Companion")
 st.sidebar.markdown("Analyse latest keywords trend")
 st.sidebar.markdown("Write blogs, plan new content")
 
-# Main content
-st.title("SEO AI Companion")
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+openai_api_key = getenv("OPENAI_KEY")
 
-if "unique_id" not in st.session_state:
-    st.session_state.unique_id = str(uuid.uuid4())
+msgs = StreamlitChatMessageHistory()
+memory = ConversationBufferMemory(
+    chat_memory=msgs,
+    return_messages=True,
+    memory_key="chat_history",
+    output_key="output",
+)
+if len(msgs.messages) == 0 or st.sidebar.button("Reset chat history"):
+    msgs.clear()
+    msgs.add_ai_message("How can I help you?")
+    st.session_state.steps = {}
 
+avatars = {"human": "user", "ai": "assistant"}
+for idx, msg in enumerate(msgs.messages):
+    with st.chat_message(avatars[msg.type]):
+        # Render intermediate steps if any were saved
+        for step in st.session_state.steps.get(str(idx), []):
+            if step[0].tool == "_Exception":
+                continue
+            with st.status(
+                f"**{step[0].tool}**: {step[0].tool_input}", state="complete"
+            ):
+                st.write(step[0].log)
+                st.write(step[1])
+        st.write(msg.content)
 
-if "preamble" not in st.session_state:
-    st.session_state.preamble = f"""You are an expert SEO Specialist with 30 Years of experience in marketing. Your task is to use internet and offer a deep-dive consultation tailored to the client's input. Ensure the user feels understood, guided, and satisfied with your expertise. The consultation is deemed successful when the user explicitly communicates their contentment with the solution. you are supposed to get latest keywords from web search. Today's date is {date.today().strftime('%A, %B %d, %Y')}."""
+if prompt := st.chat_input(placeholder="Write an article about..."):
+    st.chat_message("user").write(prompt)
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    if not openai_api_key:
+        st.info("Please add your OpenAI API key to continue.")
+        st.stop()
 
-if prompt := st.chat_input("Ask a question"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    llm = ChatOpenAI(
+        model_name="gpt-4-1106-preview",
+        openai_api_key=openai_api_key,
+        streaming=True,
+    )
+    tools = [DuckDuckGoSearchRun(name="Search")]
+    chat_agent = ConversationalChatAgent.from_llm_and_tools(
+        llm=llm,
+        tools=tools,
+    )
 
+    executor = AgentExecutor.from_agent_and_tools(
+        agent=chat_agent,
+        tools=tools,
+        memory=memory,
+        return_intermediate_steps=False,
+        handle_parsing_errors=True,
+    )
     with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        with st.spinner("🤖"):
-            resp = co.chat(
-                model="command-light-nightly",
-                message=prompt,
-                temperature=0.7,
-                conversation_id=st.session_state.unique_id,
-                # return_preamble=True,
-                preamble_override=st.session_state.preamble,
-                prompt_truncation="AUTO",
-                citation_quality="accurate",
-                connectors=[{"id": "web-search"}],
-                stream=True,
-            )
-            for token in resp:
-                if token.event_type == StreamEvent.TEXT_GENERATION:
-                    full_response += token.text
-                    message_placeholder.markdown(full_response + "▌")
-                    message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+        cfg = RunnableConfig()
+        # cfg["callbacks"] = [st_cb]
+        response = executor.invoke(prompt, cfg)
+        st.write(response["output"])
+        # st.session_state.steps[str(len(msgs.messages) - 1)] = response[
+        #     "intermediate_steps"
+        # ]
